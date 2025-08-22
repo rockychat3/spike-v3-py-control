@@ -1,55 +1,23 @@
-This is a library for Spike v3 App users building a two-drive-motor, two-front-optical-sensor robot (a common FLL design) to be able to more efficiently utilize their sensors and focus team time on completing missions without directly dealing with sensor code on every student action (which generally leads to either no use of sensors or code monopolization by 1-2 students).  The code here is fairly short and very possible to dive deeper into with students.  It also mirrors real software practice (use of reusable, shareable libraries) and gives all students a chance to learn about, and even participate in, open source development.
+This is a library for Spike v3 App users building a two-drive-motor, two-front-optical-sensor robot (a common FLL design) to be able to more efficiently utilize their sensors and focus team time on completing missions without directly dealing with sensor code on every student action (which generally leads to either no use of sensors or code monopolization by 1-2 students).  The library code itself is fairly short and very possible to dive deeper into with students.  It also mirrors real software practice (use of reusable, shareable libraries) and gives all students a chance to learn about, and even participate in, open source development.
 
 The initial working library was fully developed with GPT5 in a standard chatGPT thread, and later migrated into VS Code with the Continue extension to more efficiently address known bugs and unhelpful conventions.  This was guided by a FLL mentor with very mediocre software development skills, user beware.  It is hosted on Github with a MIT license, which essentially means that any team can take this code and use it as they wish.  It would be greatly appreciated if, after using and learning the code, other teams (students and mentors) can contribute back improvements, bug fixes, and new ideas to make this an awesome control library for driving and mechanisms.
 
 To push the code to the Spike Hub, use uploader.llsp3 -- this is Python code that runs on slot 19 to simply upload the text of the robot_control.py code.  To do this, you need to manually copy and paste the text of the main code where indicated in this file in the triple quotes, then click the run button in the Spike app.
 
-## Public API (Spike App v3, Python)
-
-All calls are async and should be awaited. Use runloop.run(main) to run your async main.
-
-- Import: `import robot_control as rc`
-- Typical ports (adjust to your build):
-  - Left drive motor: 'B'
-  - Right drive motor: 'A'
-  - Left front color sensor: 'F'
-  - Right front color sensor: 'E'
+## Setup
 
 ### Installation to the SPIKE Hub
-
-Option A: One-time installer (recommended for classroom use)
 1) Open uploader.llsp3 in the SPIKE App (slot 19 works well).
 2) Copy the entire contents of robot_control.py into the triple-quoted robot_control_code string inside uploader.llsp3.
 3) Run uploader.llsp3. You should see "Installed /flash/robot_control.py ...".
 4) After that, any new program can simply `import robot_control as rc` and use the library.
 
-Option B: Copy robot_control.py directly
-- If your workflow allows, save robot_control.py into the hub's /flash folder as robot_control.py.
-
 ### Quick start example
+Use the sample code (heavily commented) to try all the available methods for robot drive and mechanism control in example.llsp3
 
-```python example.llsp3
-import runloop
-import robot_control as rc
+## Public API (Spike App v3, Python)
 
-async def main():
-    drive = rc.DriveLib('B', 'A', 'F', 'E', track_width_cm=15.0)
-    mech  = rc.Mechanism('C')
-
-    rc.set_status('yellow')
-    await drive.straight(0.5, base_velocity=420)
-    await drive.turn('left', 90)
-    await drive.arc('right', 45, radius_cm=20)
-    result = await drive.align(1.0, base_velocity=420, creep_velocity=150, center_after_square=False, report=True)
-    print('Align result:', result)
-
-    await mech.rotate('right', 120)
-    await mech.home_stall(direction=-1)
-
-runloop.run(main())
-```
-
----
+All calls are async and should be awaited. Use runloop.run(main) to run your async main.
 
 ### Module-level helpers (rc)
 
@@ -74,7 +42,7 @@ rc.DriveLib(left_motor_port, right_motor_port, left_sensor_port, right_sensor_po
             left_polarity=-1, right_polarity=1)
 ```
 - Ports can be strings like 'A','B','E','F' or hub.port values. track_width_cm is the wheel-to-wheel distance.
-- Polarity lets you flip a motor direction without rewiring.
+- Polarity lets you flip a motor direction.
 
 Methods (all async unless noted)
 - await straight(target_total_rot, base_velocity=None, Kp=4.0, report=False)
@@ -90,7 +58,7 @@ Methods (all async unless noted)
   - Uses simple kinematics plus optional yaw trim to stay on target.
 
 - await align(target_rotations, base_velocity=None, creep_velocity=None, Kp=4.0, center_after_square=False, report=False)
-  - High-reliability line acquire and square routine:
+  - Line acquire and square routine:
     1) Go straight close to target, 2) creep and detect the black line, 3) long slow back-off, 4) independent ultra-slow re-entry until both sensors rest on black, 5) optional edge-centering.
   - Returns dict: {'found': bool, 'first_hit': 'L'|'R'|None, 'rotations_to_line': float}
   - center_after_square=True attempts a final white/black edge center.
@@ -107,9 +75,6 @@ rc.Mechanism(port, hold_at_rest=True, decel_window_deg=90.0, creep_min_vel=120)
 - For arms/claws/etc. Uses simple trapezoidal-like profiling.
 
 Methods
-- position_deg() -> float
-  - Current relative position in degrees.
-
 - await rotate(direction, degrees, velocity=None, report=False)
   - Move by a relative angle. direction: 'left' or 'right'.
 
@@ -129,5 +94,7 @@ Methods
 
 ### Troubleshooting
 - If you see import errors, make sure robot_control.py exists in /flash on the hub (run uploader.llsp3).
-- If your robot drives backward, flip left_polarity/right_polarity in DriveLib(...).
+- If your robot drives backward, flip the input motor ports (first two parameters) when initializing DriveLib.
 - If line detect is unreliable on your mat, tweak the black/white thresholds in DriveLib constructor.
+- `report=True` will generate debugging prints to help identify issues with user code or bugs in this library
+- Most parameters are optional (anything in this API with "=" has a default value already encoded)
