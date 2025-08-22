@@ -91,13 +91,11 @@ async def main():
     # Parallel tasks demo: drive and mechanism at the same time
     print("Press RIGHT button to run drive.straight and a mechanism move in parallel...")
     await rc.wait_button('right')
-    t_drive = runloop.create_task(drive.straight(1.50, base_velocity=420, report=True)) # "create_task" immediately starts running this method
-    await runloop.sleep_ms(400)  # a delay to show that the next task doesn't have to start at exactly the same time if you don't wish to
-    t_mech  = runloop.create_task(mech.rotate('left', 45, velocity=300, report=True)) 
-    await t_drive  # this ensures that the drive straight call finishes before moving on to the rest of the code 
-    await t_mech  # and this ensures that the arm rotate call also finishes before moving on (neither of these awaits are required, you could just move on)
+    a = drive.straight(1.50, base_velocity=420, report=True)
+    b = mech.rotate('left', 145, velocity=300, report=True)
+    runloop.run(*[a,b])
     print("Drive and mechanism parallel section complete.")
-
+    
     # Wrap up
     rc.set_status('green')
     print("API walkthrough complete.\nYou can now edit example.llsp3 to keep only the calls you need.")
