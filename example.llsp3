@@ -1,0 +1,95 @@
+import runloop
+import robot_control as rc
+
+# Example program demonstrating all public API calls in robot_control.py
+# Hardware assumptions (adjust ports to your build):
+# - Left drive motor on port A
+# - Right drive motor on port B
+# - Left front color sensor on port E
+# - Right front color sensor on port F
+# - A mechanism motor (e.g., claw/arm) on port C
+#
+# Tip: This script pauses for button presses between sections so you can set up the robot.
+
+async def main():
+    # Initialize libraries
+    drive = rc.DriveLib('A', 'B', 'E', 'F', track_width_cm=15.0)
+    mech  = rc.Mechanism('C')
+
+    # Hub LED status helper
+    rc.set_status('yellow')
+    print("Starting API walkthrough. Place robot safely on the mat.")
+
+    # Show yaw readout (world-referenced)
+    print("Current yaw (deg):", rc.yaw_raw())
+
+    print("Press RIGHT hub button to begin driving examples...")
+    await rc.wait_button('right')
+
+    # 1) Straight driving for wheel rotations (gyro-trimmed)
+    print("Driving straight forward 0.50 wheel rotations...")
+    await drive.straight(0.50, base_velocity=420, Kp=4.0, report=True)
+
+    print("Driving straight backward 0.25 wheel rotations...")
+    await drive.straight(-0.25, base_velocity=380, Kp=4.0, report=True)
+
+    print("Press RIGHT button to do a 90-degree left turn...")
+    await rc.wait_button('right')
+
+    # 2) Gyro-based point turn
+    await drive.turn('left', 90, turn_velocity=360, tol_deg=1.0, report=True)
+
+    print("Press RIGHT button to drive a 45-degree right arc of 20 cm radius...")
+    await rc.wait_button('right')
+
+    # 3) Arc driving with radius
+    await drive.arc('right', 45, radius_cm=20, base_velocity=420, use_gyro_trim=True, report=True)
+
+    # 4) Line align and square (requires both color sensors at front)
+    print("Place the robot so it will encounter a black line within ~1 rotation.\n"
+          "This run will detect the line, back off, and square independently on black.")
+    print("Press RIGHT button to start align()...")
+    await rc.wait_button('right')
+
+    align_result = await drive.align(1.0, base_velocity=420, creep_velocity=150,
+                                     Kp=4.0, center_after_square=False, report=True)
+    print("align() result:", align_result)
+
+    # Optional: attempt edge-centering after squaring
+    print("Re-run align() with center_after_square=True for edge centering.")
+    print("Set up again so the robot will hit the black line within ~1 rotation.")
+    print("Press RIGHT button to continue...")
+    await rc.wait_button('right')
+
+    align_result2 = await drive.align(1.0, base_velocity=420, creep_velocity=150,
+                                      Kp=4.0, center_after_square=True, report=True)
+    print("align(center_after_square=True) result:", align_result2)
+
+    # 5) Emergency stop demonstration (safe to call anytime)
+    print("Calling stop_hard() as a safety stop...")
+    await drive.stop_hard()
+
+    print("Press RIGHT button to demonstrate Mechanism API (port C)...")
+    await rc.wait_button('right')
+
+    # Mechanism: read current position
+    print("Mechanism current position (deg):", mech.position_deg())
+
+    # 6) Mechanism rotate relative
+    print("Rotating mechanism 120 degrees to the right...")
+    await mech.rotate('right', 120, velocity=420, report=True)
+
+    print("Rotating mechanism 60 degrees back to the left...")
+    await mech.rotate('left', 60, velocity=350, report=True)
+
+    # 7) Mechanism homing by stall detection
+    print("Homing mechanism toward its hard stop (direction=-1 means left)...")
+    homed = await mech.home_stall(direction=-1, velocity=350, min_delta_deg=1.0,
+                                  window_ms=300, timeout_ms=4000, zero_at_end=True, report=True)
+    print("Home result:", homed)
+
+    # Wrap up
+    rc.set_status('green')
+    print("API walkthrough complete.\nYou can now edit example.llsp3 to keep only the calls you need.")
+
+runloop.run(main())

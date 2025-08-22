@@ -1,0 +1,32 @@
+# One-time installer: writes /flash/drive_lib.py on the SPIKE hub.
+# After running this, any program on the hub can:from drive_lib import DriveLib
+import os, sys
+robot_control_code = r"""
+# PASTE THE FULL TEXT OF THE robot_control.py CODE HERE IN THE TRIPLE QUOTE BLOCK
+"""
+
+def install():
+    # Write to hub root: /flash (SPIKE App 3.x importable location)
+    # Ref method: write a .py file to /flash and import it later. :contentReference[oaicite:1]{index=1}
+    try:
+        os.chdir('/flash')
+    except Exception as e:
+        print("ERROR: cannot change to /flash:", e)
+        sys.exit(1)
+
+    fn = 'robot_control.py'
+    try:
+        os.remove(fn)# remove old copy if present
+    except:
+        pass
+
+    try:
+        with open(fn, 'w') as f:
+            f.write(robot_control_code)
+        print("Installed /flash/%s (%d bytes)" % (fn, len(robot_control_code)))
+        sys.exit(0)
+    except Exception as e:
+        print("ERROR writing", fn, ":", e)
+        sys.exit(2)
+
+install()
