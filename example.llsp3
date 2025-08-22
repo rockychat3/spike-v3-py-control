@@ -22,7 +22,7 @@ async def main():
 
     # Show yaw readout (world-referenced)
     print("Current yaw (deg):", rc.yaw_raw())
-
+    
     print("Press RIGHT hub button to begin driving examples...")
     await rc.wait_button('right')
 
@@ -87,6 +87,16 @@ async def main():
     homed = await mech.home_stall(direction=-1, velocity=350, min_delta_deg=1.0,
                                   window_ms=300, timeout_ms=4000, zero_at_end=True, report=True)
     print("Home result:", homed)
+
+    # Parallel tasks demo: drive and mechanism at the same time
+    print("Press RIGHT button to run drive.straight and a mechanism move in parallel...")
+    await rc.wait_button('right')
+    t_drive = runloop.create_task(drive.straight(1.50, base_velocity=420, report=True)) # "create_task" immediately starts running this method
+    await runloop.sleep_ms(400)  # a delay to show that the next task doesn't have to start at exactly the same time if you don't wish to
+    t_mech  = runloop.create_task(mech.rotate('left', 45, velocity=300, report=True)) 
+    await t_drive  # this ensures that the drive straight call finishes before moving on to the rest of the code 
+    await t_mech  # and this ensures that the arm rotate call also finishes before moving on (neither of these awaits are required, you could just move on)
+    print("Drive and mechanism parallel section complete.")
 
     # Wrap up
     rc.set_status('green')
